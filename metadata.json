@@ -1,0 +1,7 @@
+{
+  "name": "Chat Manager",
+  "description": "A mobile-first chat application to manage your conversations, featuring AI-powered reply suggestions powered by Google Gemini.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

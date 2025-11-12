@@ -1,0 +1,298 @@
+@if (conversation()) {
+  <div class="h-full flex flex-col bg-gray-50 dark:bg-black text-black dark:text-white">
+    <!-- Header -->
+    <header class="bg-gray-100/70 dark:bg-gray-900/70 backdrop-blur-xl sticky top-0 z-10 p-2 flex items-center border-b border-black/10 dark:border-white/10 flex-shrink-0">
+      <div class="w-1/5">
+        <button (click)="backClicked.emit()" class="p-2 rounded-full text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+      <div class="w-3/5 flex flex-col items-center text-center">
+         <img [src]="conversation().avatarUrl" alt="Avatar" class="w-9 h-9 rounded-full mb-1 object-cover">
+         <h2 class="text-base font-semibold truncate">{{ conversation().name }}</h2>
+      </div>
+      <div class="w-1/5 flex justify-end">
+        <button (click)="summarize()" [disabled]="isSummarizing()" title="Summarize Conversation" class="p-2 rounded-full text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
+          @if(isSummarizing()) {
+            <svg class="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          }
+        </button>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    <div #messageContainer class="flex-1 p-3 overflow-y-auto space-y-2 relative" (click)="activeMessageMenu.set(null)">
+      @for (message of conversation().messages; track message.id) {
+        @if (message.sender === 'system') {
+          <div class="summary-message-wrapper my-4">
+            <div class="flex items-center justify-center text-center text-xs text-gray-500 dark:text-gray-400">
+              <div class="w-full h-[0.5px] bg-gray-300 dark:bg-gray-700"></div>
+              <span class="px-2 whitespace-nowrap">{{ message.timestamp }}</span>
+              <div class="w-full h-[0.5px] bg-gray-300 dark:bg-gray-700"></div>
+            </div>
+            <div class="text-sm bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg mt-2 text-gray-700 dark:text-gray-300">
+              @if (message.isLoading) {
+                 <div class="flex items-center">
+                    <svg class="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{{ message.text }}</span>
+                 </div>
+              } @else {
+                <span class="font-semibold text-red-500">✨ Summary:</span> {{ message.text }}
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="message-wrapper" (contextmenu)="onMessageLongPress($event, message)">
+            <div class="relative flex" [class.justify-end]="message.sender === 'me'" [class.justify-start]="message.sender === 'other'">
+              <div class="max-w-xs md:max-w-md lg:max-w-lg px-3 py-2 rounded-2xl" 
+                   [class.bg-red-500]="message.sender === 'me'" 
+                   [class.text-white]="message.sender === 'me'"
+                   [class.rounded-br-md]="message.sender === 'me'"
+                   [class.bg-gray-200]="message.sender === 'other'"
+                   [class.dark:bg-[#2c2c2e]]="message.sender === 'other'"
+                   [class.text-black]="message.sender === 'other'"
+                   [class.dark:text-gray-200]="message.sender === 'other'"
+                   [class.rounded-bl-md]="message.sender === 'other'">
+                
+                @if(message.replyToMessageId) {
+                  <div class="mb-1.5 p-2 rounded-lg border-l-2 bg-black/10 dark:bg-white/10"
+                       [class.border-red-200]="message.sender === 'me'"
+                       [class.dark:border-red-200]="message.sender === 'me'"
+                       [class.border-gray-400]="message.sender === 'other'"
+                       [class.dark:border-red-500]="message.sender === 'other'">
+                    <p class="font-semibold text-sm"
+                       [class.text-red-100]="message.sender === 'me'"
+                       [class.text-red-500]="message.sender === 'other'">{{ message.replyToSender }}</p>
+                    <p class="text-sm opacity-80 truncate"
+                      [class.text-red-50]="message.sender === 'me'"
+                      [class.text-gray-700]="message.sender === 'other'"
+                      [class.dark:text-gray-300]="message.sender === 'other'">{{ message.replyToText }}</p>
+                  </div>
+                }
+
+                @if (message.imageUrl) {
+                  <img [src]="message.imageUrl" class="rounded-lg max-w-full my-1 object-cover" alt="Sent image" />
+                }
+                @if (message.text) {
+                   <p class="text-base break-words" [innerHTML]="parseMarkdown(message.text)"></p>
+                }
+                
+                @if (message.sources && message.sources.length > 0) {
+                  <div class="mt-2 pt-2 border-t border-gray-300 dark:border-gray-500">
+                    <p class="text-xs font-semibold mb-1" [class.text-gray-600]="message.sender === 'other'" [class.text-red-100]="message.sender === 'me'">Sources:</p>
+                    <div class="flex flex-col items-start gap-1">
+                      @for(source of message.sources; track source.uri) {
+                        <a [href]="source.uri" target="_blank" rel="noopener noreferrer" class="text-xs underline truncate hover:opacity-80" [class.text-blue-400]="message.sender === 'other'" [class.text-red-200]="message.sender === 'me'">
+                          {{ source.title || source.uri }}
+                        </a>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <div class="flex items-end justify-end gap-1" [class.text-red-200]="message.sender === 'me'" [class.text-gray-500]="message.sender === 'other'" [class.dark:text-gray-400]="message.sender === 'other'">
+                  <p class="text-[11px] mt-1 text-right">
+                    {{ message.timestamp }}
+                  </p>
+                  @if (message.sender === 'me') {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" [class.text-blue-300]="message.status === 'read'">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      @if (message.status === 'read') {
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13l4 4L23 7" />
+                      }
+                    </svg>
+                  }
+                </div>
+
+              </div>
+
+              <!-- Action Menu -->
+              @if (activeMessageMenu() === message.id) {
+                  <div (click)="$event.stopPropagation()" class="absolute z-20 top-0 mt-2 w-32 bg-white dark:bg-[#38383a] rounded-md shadow-lg border border-gray-200 dark:border-gray-600 animate-fade-in-up text-sm font-medium"
+                      [class.right-full]="message.sender === 'me'"
+                      [class.mr-2]="message.sender === 'me'"
+                      [class.left-full]="message.sender === 'other'"
+                      [class.ml-2]="message.sender === 'other'">
+                      <button (click)="startReply(message)" class="block w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-t-md">Reply</button>
+                      <div class="h-[1px] bg-gray-200 dark:bg-gray-600"></div>
+                      <button (click)="copyMessage(message.text)" class="block w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">Copy</button>
+                      @if (message.sender === 'me') {
+                          <button (click)="startEdit(message)" class="block w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">Edit</button>
+                          <div class="h-[1px] bg-gray-200 dark:bg-gray-600"></div>
+                          <button (click)="deleteMessage(message.id)" class="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-b-md">Delete</button>
+                      }
+                  </div>
+              }
+            </div>
+          </div>
+        }
+      }
+      @if (conversation().isTyping) {
+        <div class="message-wrapper flex justify-start">
+            <div class="px-4 py-3 rounded-2xl bg-gray-200 dark:bg-[#2c2c2e] rounded-bl-md">
+            <div class="flex items-center justify-center space-x-1">
+                <div class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full animate-bounce"></div>
+            </div>
+            </div>
+        </div>
+      }
+      @if (showScrollButton()) {
+        <button (click)="scrollToBottom()" class="animate-fade-in-up absolute bottom-4 right-4 z-20 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-black transition-all duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+        </button>
+      }
+    </div>
+
+    <!-- Input Area -->
+    <footer class="bg-gray-100/80 dark:bg-black/80 backdrop-blur-xl p-2 border-t border-black/10 dark:border-white/10 flex-shrink-0">
+       <div class="flex flex-col w-full">
+        <!-- Reply Mode Indicator -->
+        @if (replyingTo(); as repliedMessage) {
+          <div class="w-full pb-2 px-2 flex justify-between items-center bg-gray-200/80 dark:bg-gray-800/80 rounded-t-lg animate-fade-in">
+            <div class="flex-1 min-w-0 border-l-2 border-red-500 pl-2">
+                <p class="text-sm font-bold text-red-500">Replying to {{ repliedMessage.sender === 'me' ? 'yourself' : conversation().name }}</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ repliedMessage.imageUrl ? '📷 Image' : repliedMessage.text }}</p>
+            </div>
+            <button (click)="cancelReply()" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+          </div>
+        }
+        <!-- Edit Mode Indicator -->
+        @if (editingMessage()) {
+          <div class="w-full pb-2 px-2 flex justify-between items-center bg-gray-200/80 dark:bg-gray-800/80 rounded-t-lg animate-fade-in">
+              <div class="flex-1 min-w-0">
+                  <p class="text-sm font-bold text-red-500">Editing Message</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 truncate">{{ editingMessage()?.text }}</p>
+              </div>
+              <button (click)="cancelEdit()" class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+              </button>
+          </div>
+        }
+        <!-- AI Features Area -->
+        @if (suggestions().length > 0) {
+          <div class="w-full pb-2">
+            <div class="flex items-center gap-2 overflow-x-auto pb-1.5">
+              @for(suggestion of suggestions(); track suggestion) {
+                <button (click)="selectSuggestion(suggestion)" class for="flex-shrink-0 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-gray-200/80 dark:bg-gray-700/80 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                  {{ suggestion }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        @if (showToneChanger()) {
+          <div class="w-full pb-2">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5 px-1">Change tone to:</p>
+            <div class="flex items-center gap-2 overflow-x-auto pb-1.5">
+              @for(tone of tones; track tone) {
+                <button (click)="selectTone(tone)" class="flex-shrink-0 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-gray-200/80 dark:bg-gray-700/80 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                  {{ tone }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        <!-- Input row -->
+        <div class="flex items-end w-full">
+          <div class="flex flex-col items-center">
+            <button (click)="useGoogleSearch.set(!useGoogleSearch())" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" [class.bg-red-100]="useGoogleSearch()" [class.dark:bg-red-900/50]="useGoogleSearch()" title="Toggle Web Search">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9M3 12a9 9 0 009 9" />
+              </svg>
+            </button>
+             <input #imageInput type="file" accept="image/*" (change)="onImageSelected($event)" class="hidden">
+            <button (click)="triggerImageUpload()" [disabled]="isSuggesting() || isRewriting()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" title="Send Image">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                </svg>
+            </button>
+          </div>
+          <div class="flex flex-col flex-1 mx-2">
+              <div class="flex items-center">
+                <button (click)="suggestReply()" [disabled]="isSuggesting() || isRewriting()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" title="Suggest Reply">
+                  @if (isSuggesting()) {
+                    <svg class="animate-spin h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  }
+                </button>
+                <button (click)="toggleToneChanger()" [disabled]="isRewriting() || isSuggesting() || !newMessage().trim()" class="p-2 ml-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" title="Change Tone">
+                   @if (isRewriting()) {
+                    <svg class="animate-spin h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+                    </svg>
+                  }
+                </button>
+             </div>
+              <input 
+                type="text" 
+                [(ngModel)]="newMessage"
+                (keyup.enter)="sendMessage()"
+                (input)="onInput()"
+                placeholder="Message"
+                class="flex-1 bg-gray-200 dark:bg-[#2c2c2e] text-black dark:text-white rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-red-500 transition-shadow placeholder-gray-500 dark:placeholder-gray-400">
+          </div>
+          @if (newMessage().trim() || editingMessage()) {
+            <button (click)="sendMessage()" 
+              class="w-8 h-8 rounded-full flex items-center justify-center text-white bg-red-500 transition-colors">
+              @if (editingMessage()) {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M5 12l7-7 7 7" />
+                </svg>
+              }
+            </button>
+          } @else {
+            <button (click)="toggleRecording()" title="Voice Input"
+              class="w-8 h-8 rounded-full flex items-center justify-center text-white bg-red-500 transition-colors">
+              @if (isRecording()) {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 animate-pulse" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V4z" />
+                </svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              }
+            </button>
+          }
+        </div>
+       </div>
+    </footer>
+  </div>
+}
